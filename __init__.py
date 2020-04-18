@@ -7,12 +7,20 @@ from shiboken2 import wrapInstance
 import maya.OpenMayaUI as omui
 import json
 
+"""
+TODO:
+    - Refresh button
+    - Open workspace
+    - Create workspace
+    - Doc / Docstrings
+"""
 
-def get_recent_workspaces(path):
+
+def get_recent_workspaces(user_prefs_file_path):
     start = ' -sva "RecentProjectsList" "'
     paths = list()
-    if os.path.isfile(path):
-        with open(path, 'r') as f:
+    if os.path.isfile(user_prefs_file_path):
+        with open(user_prefs_file_path, 'r') as f:
             lines = f.readlines()
 
         for line in lines:
@@ -28,7 +36,6 @@ def get_recent_workspaces(path):
 
 
 class Workspace(object):
-
     """
     Workspace is a class that permit to navigate between workspaces and create one.
     """
@@ -70,12 +77,11 @@ class Workspace(object):
         :return: The freshly created workspace (Workspace or None).
         """
         if not os.path.isdir(location):
-            warning('\'{0}\' is not an existing location. Skip...'.format(location))
             return None
+
         path = '{0}/{1}'.format(location, name)
 
         if os.path.exists(path):
-            warning('\'{0}\' already is an existing path. Therefore it cannot be created. Skip...'.format(path))
             return None
 
         current_workspace = cls.get_current()
@@ -100,7 +106,7 @@ class Workspace(object):
         Set the workspace as current workspace.
         :return: Nothing
         """
-        cmds.workspace(self.__path, openWorkspace=True)
+        mel.eval('setProject \"{0}\"'.format(self.__path))
 
     def get_name(self):
         """
@@ -170,18 +176,12 @@ class FavoriteWorkspacesFile(object):
             json.dump(content, f)
 
     def add_workspace(self, path):
-        if not Workspace.is_one(path):
-            warning('\'{0}\' is not a valid workspace. Therefore it cannot be added to the favorites. Skip...'.format(path), prefix=self.__class__.__name__)
-            return
-
         workspaces = self.get_workspaces()
         if path in workspaces:
             workspaces.remove(path)
         workspaces.insert(0, path)
 
         self.write(workspaces)
-
-        return
 
     def remove_workspace(self, path):
         workspaces = self.get_workspaces()
@@ -190,7 +190,6 @@ class FavoriteWorkspacesFile(object):
 
 
 class Loader(QDialog):
-
     star_icon = QIcon('{0}/star.png'.format(os.path.dirname(__file__)))
     folder_icon = QIcon(':/folder-open.png')
     create_workspace_icon = QIcon(':/folder-new.png')
@@ -204,6 +203,7 @@ class Loader(QDialog):
 
         current_workspace_label = QLabel('current')
         self.current_workspace_line = QLineEdit()
+        self.current_workspace_line.setEnabled(False)
 
         current_workspace_lay = QHBoxLayout()
         current_workspace_lay.addWidget(current_workspace_label)
@@ -211,6 +211,7 @@ class Loader(QDialog):
 
         self.workspace_list = QListWidget()
         self.workspace_list.itemDoubleClicked.connect(self.set_workspace)
+        # self.workspace_list.ent.connect(self.check_refresh)
 
         set_btn = QPushButton('set current')
         set_btn.clicked.connect(self.set_workspace)
@@ -267,7 +268,7 @@ class Loader(QDialog):
         self.current_workspace_line.setText(current_workspace_path)
 
         favorite_workspaces = FavoriteWorkspacesFile.get().get_workspaces()
-        recent_workspaces = get_recent_workspaces('C:/Users/Pierre Laurent/Documents/maya/2019/prefs/userPrefs.mel')
+        recent_workspaces = get_recent_workspaces('{0}userPrefs.mel'.format(cmds.internalVar(userPrefDir=True)))
 
         workspaces = list()
         workspaces.append(['-- favorites --', False])
@@ -341,3 +342,10 @@ class Loader(QDialog):
 
     def create_workspace(self):
         pass
+
+    def enterEvent(self, *args, **kwargs):
+        real_current_workspace = Workspace.get_current().get_path()
+        current_workspace = self.current_workspace_line.text()
+
+        if real_current_workspace != current_workspace:
+            self.reload()
