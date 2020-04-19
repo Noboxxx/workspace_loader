@@ -12,6 +12,7 @@ Put the repo **workspace_loader** somewhere where maya can see it, then run this
 import workspace_loader
 workspace_loader.Loader.display()
 ```
+You can of course place the command in a shelf button or in your userSetup file.
 
 ## How to use it
 ![Loader](/window.PNG)
