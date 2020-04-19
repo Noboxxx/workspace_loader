@@ -3,36 +3,17 @@ import os
 from maya import cmds, mel
 from PySide2.QtWidgets import *
 from PySide2.QtGui import *
+from PySide2.QtCore import *
 from shiboken2 import wrapInstance
 import maya.OpenMayaUI as omui
 import json
-
-"""
-TODO:
-    - Refresh button
-    - Open workspace
-    - Create workspace
-    - Doc / Docstrings
-"""
+import webbrowser
 
 
-def get_recent_workspaces(user_prefs_file_path):
-    start = ' -sva "RecentProjectsList" "'
-    paths = list()
-    if os.path.isfile(user_prefs_file_path):
-        with open(user_prefs_file_path, 'r') as f:
-            lines = f.readlines()
-
-        for line in lines:
-            if line.startswith(start):
-                path = line.replace(start, '')[:-3]
-                paths.append(path)
-
-    workspaces = list()
-    for path in paths:
-        workspaces.append(path)
-    workspaces.reverse()
-    return workspaces
+def get_recent_workspaces():
+    recent = mel.eval('optionVar -query "RecentProjectsList"') or list()
+    recent.reverse()
+    return recent
 
 
 class Workspace(object):
@@ -69,37 +50,29 @@ class Workspace(object):
         return None
 
     @classmethod
-    def create(cls, location, name):
+    def create(cls, path):
         """
-        Create a new workspace.
-        :param location: Where the workspace should be placed (str).
-        :param name: What the name of the workspace should be (str)
-        :return: The freshly created workspace (Workspace or None).
+        Create a new workspace in the selected location.
+        :param path: str
+        :return: Workspace or None
         """
-        if not os.path.isdir(location):
-            return None
+        if os.path.isdir(path):
+            if not cls.is_one(path):
+                current_workspace = cls.get_current()
 
-        path = '{0}/{1}'.format(location, name)
+                mel.eval('setProject \"{0}\"'.format(path))
 
-        if os.path.exists(path):
-            return None
+                for file_rule in cmds.workspace(query=True, fileRuleList=True):
+                    file_rule_dir = cmds.workspace(fileRuleEntry=file_rule)
+                    maya_file_rule_dir = '{0}/{1}'.format(path, file_rule_dir)
+                    if not os.path.exists(maya_file_rule_dir):
+                        os.makedirs(maya_file_rule_dir)
 
-        current_workspace = cls.get_current()
+                if current_workspace:
+                    current_workspace.set_current()
 
-        os.makedirs(path)
-
-        mel.eval('setProject \"{0}\"'.format(path))
-
-        for file_rule in cmds.workspace(query=True, fileRuleList=True):
-            file_rule_dir = cmds.workspace(fileRuleEntry=file_rule)
-            maya_file_rule_dir = '{0}/{1}'.format(path, file_rule_dir)
-            if not os.path.exists(maya_file_rule_dir):
-                os.makedirs(maya_file_rule_dir)
-
-        if current_workspace:
-            current_workspace.set_current()
-
-        return cls(path)
+                return cls(path)
+        return None
 
     def set_current(self):
         """
@@ -189,10 +162,68 @@ class FavoriteWorkspacesFile(object):
         self.write(workspaces)
 
 
+class Favorite(object):
+
+    def __init__(self, path):
+        self.__path = path
+
+    def remove(self):
+        FavoriteWorkspacesFile.get().remove_workspace(self.__path)
+
+    @classmethod
+    def get_all(cls):
+        favorites = list()
+        for favorite in FavoriteWorkspacesFile.get().get_workspaces():
+            favorites.append(cls(favorite))
+        return favorites
+
+    @classmethod
+    def create(cls, recent):
+        FavoriteWorkspacesFile.get().add_workspace(recent.get_path())
+        return cls(recent.get_path())
+
+    def get_workspace(self):
+        if Workspace.is_one(self.__path):
+            return Workspace(self.__path)
+        return None
+
+    def get_path(self):
+        return self.__path
+
+
+class Recent(object):
+
+    def __init__(self, path):
+        self.__path = path
+
+    @classmethod
+    def get_all(cls):
+        recents = list()
+        for recent in mel.eval('optionVar -query "RecentProjectsList"') or list():
+            recents.append(cls(recent))
+
+        recents.reverse()
+        return recents
+
+    def set_as_favorite(self):
+        return Favorite.create(self)
+
+    def get_path(self):
+        return self.__path
+
+    def get_workspace(self):
+        if Workspace.is_one(self.__path):
+            return Workspace(self.__path)
+        return None
+
+
 class Loader(QDialog):
     star_icon = QIcon('{0}/star.png'.format(os.path.dirname(__file__)))
     folder_icon = QIcon(':/folder-open.png')
-    create_workspace_icon = QIcon(':/folder-new.png')
+    folder_new_icon = QIcon(':/folder-new.png')
+    search_icon = QIcon(':/search.png')
+    help_icon = QIcon(':/help.png')
+    doc_url = 'https://github.com/Noboxxx/workspace_loader'
 
     def __init__(self, parent):
         super(Loader, self).__init__(parent)
@@ -200,6 +231,10 @@ class Loader(QDialog):
         self.setWindowTitle(self.__class__.__name__)
         self.setMinimumWidth(500)
         self.setMinimumHeight(500)
+        if cmds.about(ntOS=True):
+            self.setWindowFlags(self.windowFlags() ^ Qt.WindowContextHelpButtonHint)
+        elif cmds.about(macOS=True):
+            self.setWindowFlags(Qt.Tool)
 
         current_workspace_label = QLabel('current')
         self.current_workspace_line = QLineEdit()
@@ -211,14 +246,16 @@ class Loader(QDialog):
 
         self.workspace_list = QListWidget()
         self.workspace_list.itemDoubleClicked.connect(self.set_workspace)
-        # self.workspace_list.ent.connect(self.check_refresh)
 
         set_btn = QPushButton('set current')
         set_btn.clicked.connect(self.set_workspace)
 
+        set_and_open_btn = QPushButton('open file')
+        set_and_open_btn.clicked.connect(self.set_and_open)
+
         open_folder_btn = QPushButton()
         open_folder_btn.setMaximumWidth(32)
-        open_folder_btn.clicked.connect(self.open_folder)
+        open_folder_btn.clicked.connect(self.open_workspace)
         open_folder_btn.setIcon(self.folder_icon)
 
         favorite_btn = QPushButton()
@@ -227,15 +264,28 @@ class Loader(QDialog):
         favorite_btn.clicked.connect(self.toggle_favorite)
 
         create_workspace_btn = QPushButton()
-        create_workspace_btn.setIcon(self.create_workspace_icon)
+        create_workspace_btn.setIcon(self.folder_new_icon)
         create_workspace_btn.setMaximumWidth(32)
         create_workspace_btn.clicked.connect(self.create_workspace)
+
+        open_in_explorer_btn = QPushButton()
+        open_in_explorer_btn.setIcon(self.search_icon)
+        open_in_explorer_btn.setMaximumWidth(32)
+        open_in_explorer_btn.clicked.connect(self.open_in_explorer)
+
+        help_btn = QPushButton()
+        help_btn.setIcon(self.help_icon)
+        help_btn.setMaximumWidth(32)
+        help_btn.clicked.connect(self.help)
 
         btn_lay = QHBoxLayout()
         btn_lay.addWidget(favorite_btn)
         btn_lay.addWidget(open_folder_btn)
         btn_lay.addWidget(create_workspace_btn)
+        btn_lay.addWidget(open_in_explorer_btn)
         btn_lay.addWidget(set_btn)
+        btn_lay.addWidget(set_and_open_btn)
+        btn_lay.addWidget(help_btn)
 
         main_lay = QVBoxLayout(self)
         main_lay.addLayout(current_workspace_lay)
@@ -258,8 +308,6 @@ class Loader(QDialog):
     def reload(self):
         self.workspace_list.clear()
 
-        cmds.savePrefs(general=True)
-
         current_workspace = Workspace.get_current()
         current_workspace_path = ''
         if isinstance(current_workspace, Workspace):
@@ -267,85 +315,114 @@ class Loader(QDialog):
 
         self.current_workspace_line.setText(current_workspace_path)
 
-        favorite_workspaces = FavoriteWorkspacesFile.get().get_workspaces()
-        recent_workspaces = get_recent_workspaces('{0}userPrefs.mel'.format(cmds.internalVar(userPrefDir=True)))
+        list_item = QListWidgetItem('-- favorites --')
+        self.workspace_list.addItem(list_item)
 
-        workspaces = list()
-        workspaces.append(['-- favorites --', False])
-        for workspace in favorite_workspaces:
-            workspaces.append([workspace, True])
-        workspaces.append(['-- recently opened --', False])
-        for workspace in recent_workspaces:
-            workspaces.append([workspace, False])
-
-        for workspace, favorite in workspaces:
-            list_item = QListWidgetItem(workspace)
+        for favorite in Favorite.get_all():
+            list_item = QListWidgetItem(favorite.get_path())
+            list_item.setIcon(self.star_icon)
+            list_item.setData(Qt.UserRole, favorite)
             self.workspace_list.addItem(list_item)
 
-            if not Workspace.is_one(workspace):
+            if not favorite.get_workspace():
                 list_item.setForeground(QBrush(QColor('gray')))
 
-            if favorite is True:
-                list_item.setIcon(self.star_icon)
+        list_item = QListWidgetItem('')
+        self.workspace_list.addItem(list_item)
 
-    def get_selected_path(self):
+        list_item = QListWidgetItem('-- recently opened --')
+        self.workspace_list.addItem(list_item)
+
+        for recent in Recent.get_all():
+            list_item = QListWidgetItem(recent.get_path())
+            list_item.setData(Qt.UserRole, recent)
+            self.workspace_list.addItem(list_item)
+
+            if not recent.get_workspace():
+                list_item.setForeground(QBrush(QColor('gray')))
+
+    def get_selected_data(self):
         selected_items = self.workspace_list.selectedItems()
         if selected_items:
-            text = selected_items[0].text()
-            if not text.startswith('--'):
-                return text
-        return ''
+            return selected_items[-1].data(Qt.UserRole)
+        return None
 
     def set_workspace(self):
-        path = self.get_selected_path()
+        data = self.get_selected_data()
 
-        if path == '':
-            return
+        if data is not None:
+            workspace = data.get_workspace()
 
-        if Workspace.is_one(path):
-            Workspace(path).set_current()
-            info('\'{0}\' has been set as current workspace.'.format(path), prefix=self.__class__.__name__)
-        else:
-            warning('\'{0}\' is not valid. Skip...'.format(path), prefix=self.__class__.__name__)
-            return
+            if workspace is not None:
+                self._set_as_current_workspace(workspace)
+                return True
+            else:
+                warning('\'{0}\' cannot be set because it is invalid (maybe it does not exist anymore). Cancel...'.format(data.get_path()), prefix=self.__class__.__name__)
 
-        self.reload()
+        return False
 
     def toggle_favorite(self):
-        path = self.get_selected_path()
+        data = self.get_selected_data()
 
-        if path == '':
+        if isinstance(data, Favorite):
+            data.remove()
+            self.reload()
+            return
+        elif isinstance(data, Recent):
+            data.set_as_favorite()
+            self.reload()
             return
 
-        favorite_workspace_file = FavoriteWorkspacesFile.get()
+    def open_workspace(self):
+        path = QFileDialog.getExistingDirectory(self, "Create workspace in location")
 
-        if path in favorite_workspace_file.get_workspaces():
-            favorite_workspace_file.remove_workspace(path)
-            info('\'{0}\' has been removed from the favorites.'.format(path), prefix=self.__class__.__name__)
-        else:
-            favorite_workspace_file.add_workspace(path)
-            info('\'{0}\' has been added to the favorites.'.format(path), prefix=self.__class__.__name__)
-
-        self.reload()
-
-    def open_folder(self):
-        path = self.get_selected_path()
-
-        if path == '':
+        if Workspace.is_one(path):
+            workspace = Workspace(path)
+            self._set_as_current_workspace(workspace)
             return
 
-        if not Workspace.is_one(path):
-            warning('\'{0}\' is not valid. Skip...'.format(path), prefix=self.__class__.__name__)
-            return
+        warning('\'{0}\' is not a workspace. Cancel...'.format(path), prefix=self.__class__.__name__)
+        return
 
-        os.startfile(path)
+    def open_in_explorer(self):
+        data = self.get_selected_data()
+
+        if data is not None:
+            workspace = data.get_workspace()
+            if workspace is not None:
+                os.startfile(workspace.get_path())
+            else:
+                warning('\'{0}\' cannot be opened because it is invalid (maybe it does not exist anymore). Cancel...'.format(data.get_path()), prefix=self.__class__.__name__)
 
     def create_workspace(self):
-        pass
+        path = QFileDialog.getExistingDirectory(self, "Create workspace in location")
+        workspace = Workspace.create(path)
+
+        if workspace is not None:
+            self._set_as_current_workspace(workspace)
+            self.reload()
+        else:
+            warning('An error occurred while trying to set \'{0}\' as a worskapce (maybe it is already one). Cancel...'.format(path), prefix=self.__class__.__name__)
 
     def enterEvent(self, *args, **kwargs):
-        real_current_workspace = Workspace.get_current().get_path()
-        current_workspace = self.current_workspace_line.text()
+        real_current_workspace = Workspace.get_current()
 
-        if real_current_workspace != current_workspace:
-            self.reload()
+        if real_current_workspace is not None:
+            current_workspace = self.current_workspace_line.text()
+
+            if real_current_workspace.get_path() != current_workspace:
+                self.reload()
+
+    def set_and_open(self):
+        result = self.set_workspace()
+
+        if result is True:
+            mel.eval('OpenScene;')
+
+    def _set_as_current_workspace(self, workspace):
+        workspace.set_current()
+        info('\'{0}\' has been set as current workspace.'.format(workspace.get_path()), prefix=self.__class__.__name__)
+        self.reload()
+
+    def help(self):
+        webbrowser.open(self.doc_url)
