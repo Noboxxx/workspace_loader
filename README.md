@@ -7,7 +7,7 @@ I know it's a basic tool but I really would like to improve it so feel free to a
 I would like to make it as close from the maya philosophy about workspaces as possible.
 
 ## License
-This project and source are released under the MIT License. Do what ever with it.
+This project and source are released under the MIT License.
  
 ## Install
 Put the repo **workspace_loader** somewhere where maya can see it, then run this:
