@@ -40,7 +40,7 @@ You can open in explorer the selected workspace by clicking on the search icon.
 You can set as current the selected workspace by clicking on the button "set current".
 
 #### open file
-By clicking on the "open file" button you will be asked to open a file in the selected workspace and it will set the workspace as current.
+By clicking on the "open file" button you will be asked to open a scene in the selected workspace and it will set the workspace as current.
 
 #### help
 The help button will redirect you here :)
