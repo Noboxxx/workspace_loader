@@ -8,7 +8,10 @@ I would like to make it as close from the maya philosophy about workspaces as po
 
 ## License
 This project and source are released under the MIT License.
- 
+
+## Requirements
+Working on Windows and Maya 2019. Nothing else is needed.
+
 ## Install
 Put the repo **workspace_loader** somewhere where maya can see it, then run this:
 ```python
