@@ -16,9 +16,8 @@ workspace_loader.Loader.display()
 ## How to use it
 ![Loader](/window.PNG)
 
-### Curent
-On top after current is located the current workspace.
-
+### Current
+On top after current is displayed the current workspace.
 
 ### List View
 In the liste view you have two parts. One for the workspaces tagged as favortie and bellow are placed the recently opened workspaces. The gray workspaces doesn't exist anymore and none of most of the actions bellow won't work on them. Double-clicking on a workspace will set it as current workspace.
