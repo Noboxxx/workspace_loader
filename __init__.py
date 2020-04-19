@@ -337,36 +337,33 @@ class Loader(QDialog):
     def reload(self):
         self.workspace_list.clear()
 
+        # Display current workspace at the top of the window
         current_workspace = Workspace.get_current()
         current_workspace_path = ''
         if isinstance(current_workspace, Workspace):
             current_workspace_path = current_workspace.get_path()
-
         self.current_workspace_line.setText(current_workspace_path)
 
+        # Adding workspaces to the favorite section
         list_item = QListWidgetItem('-- favorites --')
         self.workspace_list.addItem(list_item)
-
         for favorite in Favorite.get_all():
             list_item = QListWidgetItem(favorite.get_path())
             list_item.setIcon(self.star_icon)
             list_item.setData(Qt.UserRole, favorite)
             self.workspace_list.addItem(list_item)
-
             if not favorite.get_workspace():
                 list_item.setForeground(QBrush(QColor('gray')))
-
         list_item = QListWidgetItem('')
         self.workspace_list.addItem(list_item)
 
+        # Adding workspaces to the recently opened section
         list_item = QListWidgetItem('-- recently opened --')
         self.workspace_list.addItem(list_item)
-
         for recent in Recent.get_all():
             list_item = QListWidgetItem(recent.get_path())
             list_item.setData(Qt.UserRole, recent)
             self.workspace_list.addItem(list_item)
-
             if not recent.get_workspace():
                 list_item.setForeground(QBrush(QColor('gray')))
 
