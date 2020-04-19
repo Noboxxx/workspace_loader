@@ -1,4 +1,3 @@
-from mprint import *
 import os
 from maya import cmds, mel
 from PySide2.QtWidgets import *
@@ -8,6 +7,36 @@ from shiboken2 import wrapInstance
 import maya.OpenMayaUI as omui
 import json
 import webbrowser
+import sys
+
+
+def f_msg(msg, prefix, suffix, new_line_after):
+    s = ''
+
+    if prefix != '':
+        s += '{0} : '.format(prefix)
+
+    s += str(msg)
+
+    if suffix != '':
+        s += ' / {0}'.format(suffix)
+
+    if new_line_after:
+        s += '\n'
+
+    return s
+
+
+def warning(msg='', prefix='', suffix='', new_line_after=False):
+    cmds.warning(f_msg(msg, prefix, suffix, new_line_after))
+
+
+def error(msg='', prefix='', suffix='', new_line_after=False):
+    cmds.error(f_msg(msg, prefix, suffix, new_line_after))
+
+
+def info(msg='', prefix='', suffix='', new_line_after=False):
+    sys.stdout.write('{0}\n'.format(f_msg(msg, prefix, suffix, new_line_after)))
 
 
 def get_recent_workspaces():
