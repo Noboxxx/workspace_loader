@@ -405,6 +405,9 @@ class Loader(QDialog):
     def open_workspace(self):
         path = QFileDialog.getExistingDirectory(self, "Create workspace in location")
 
+        if path == '':
+            return
+
         if Workspace.is_one(path):
             workspace = Workspace(path)
             self._set_as_current_workspace(workspace)
@@ -425,6 +428,10 @@ class Loader(QDialog):
 
     def create_workspace(self):
         path = QFileDialog.getExistingDirectory(self, "Create workspace in location")
+
+        if path == '':
+            return
+
         workspace = Workspace.create(path)
 
         if workspace is not None:
