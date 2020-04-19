@@ -1,2 +1,46 @@
 # workspace_loader
- A module where you can switch between workspaces
+**Workspace Loader** is a tool made to manipulate workspaces with ease in maya. 
+
+## About
+I made this as a practice to create a tool from coding to sharing.
+I know it's a basic tool but I really would like to improve it so feel free to ask for improvements and bug fixes!
+I would like to make it as close from the maya philosophy about workspaces as possible.
+ 
+## Install
+Put the repo **workspace_loader** somewhere where maya can see it, then run this:
+```python
+import workspace_loader
+workspace_loader.Loader.display()
+```
+
+## How to use it
+![Loader](/window.PNG)
+
+### Curent
+On top after current is located the current workspace.
+
+
+### List View
+In the liste view you have two parts. One for the workspaces tagged as favortie and bellow are placed the recently opened workspaces. The gray workspaces doesn't exist anymore and none of most of the actions bellow won't work on them. Double-clicking on a workspace will set it as current workspace.
+
+### Possible actions
+#### favortie
+You can tag a workspace as favortie by selecting a workspace and clicking on the star button. If a favortie workspace is selected. It will be removed from the favorite section.
+
+#### open
+You can open a workspace by clicking on the open folder button. It will automatically set it as current workspace.
+
+#### create
+You can create a new workspace by clicking on the new folder button. You have to choose a folder where the workspace will be set (I recommand to set it in an empty folder). It will automatically be set as current workspace.
+
+#### explorer
+You can open in explorer the selected workspace by clicking on the search icon.
+
+#### set current
+You can set as current the selected workspace by clicking on the button "set current".
+
+#### open file
+By clicking on the "open file" button you will be asked to open a file in the selected workspace and it will set the workspace as current.
+
+#### help
+The help button will redirect you here :)
