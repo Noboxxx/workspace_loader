@@ -13,10 +13,11 @@ This project and source are released under the MIT License.
 Working on Windows and Maya 2019. Nothing else is needed.
 
 ## Install
-Put the repo **workspace_loader** somewhere where maya can see it, then run this:
+this is more of a tool dev approach than just a td tool. you will have to deal with env variables at some point for more complex tools - to put icons, c++ plugins and more
+Put the python folder in the PYTHONPATH, then run this: 
 ```python
-import workspace_loader
-workspace_loader.Loader.display()
+import workspace_loader.ui
+workspace_loader.ui.Loader.display()
 ```
 You can of course place the command in a shelf button or in your userSetup file.
 
