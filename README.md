@@ -14,7 +14,7 @@ Working on Windows and Maya 2019. Nothing else is needed.
 
 ## Install
 this is more of a tool dev approach than just a td tool. you will have to deal with env variables at some point for more complex tools - to put icons, c++ plugins and more
-Put the python folder in the PYTHONPATH, then run this: 
+Put the python folder in the PYTHONPATH, and the icons folder in XBMLANGPATH run this: 
 ```python
 import workspace_loader.ui
 workspace_loader.ui.Loader.display()
