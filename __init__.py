@@ -127,7 +127,7 @@ class Workspace(object):
 
 def ui_path_to_widget(ui_path, type_):
     pointer = omui.MQtUtil.findControl(ui_path)
-    return wrapInstance(long(pointer), type_)
+    return wrapInstance(int(pointer), type_)
 
 
 class FavoriteWorkspacesFile(object):
